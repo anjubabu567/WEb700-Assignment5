@@ -1,82 +1,117 @@
 /********************************************************************************
-* WEB700 – Assignment 04
+* WEB700 – Assignment 05
 *
 * I declare that this assignment is my own work in accordance with Seneca's
 * Academic Integrity Policy:
 *
 * https://www.senecapolytechnic.ca/about/policies/academic-integrity-policy.html
 *
-* Name: Anju Babu Student ID: 115640245 Date: 03-07-2025
+* Name: Anju Babu Student ID: 115640245 Date: 17-07-2025
 *
 * Published URL: ___________________________________________________________
 *
 ********************************************************************************/
-
 const express = require('express');
 const app = express();
 const path = require('path');
-const LegoData = require('./modules/legoSets'); // Require the class directly
-
-const legoData = new LegoData(); // Instantiate the class [note: this is a change from Assignment 3's structure]
+const LegoData = require('./modules/legoSets'); 
+const legoData = new LegoData();
 
 const HTTP_PORT = process.env.PORT || 8080;
 
 // Configure express.static middleware to serve static files from the 'public' folder 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Middleware to parse urlencoded form data
+app.use(express.urlencoded({ extended: true }));
+
+// Configure EJS as the view engine
+app.set('view engine', 'ejs');
+// Set the views directory for EJS (important for Vercel)
+app.set('views', path.join(__dirname, '/views'));
+
 // Routes
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, "/views/home.html"));
+    res.render("home", { page: "/" }); 
 });
 
 app.get('/about', (req, res) => {
-    res.sendFile(path.join(__dirname, "/views/about.html"));
+    res.render("about", { page: "/about" });
 });
 
 app.get('/lego/sets', (req, res) => {
     if (req.query.theme) {
         legoData.getSetsByTheme(req.query.theme)
-            .then(data => res.json(data))
-            .catch(err => res.status(404).send(err));
+            .then(data => {
+                res.render("sets", { sets: data, page: "/lego/sets" }); 
+            })
+            .catch(err => {
+                res.status(404).render("404", { message: err, page: "" }); 
+            });
     } else {
         legoData.getAllSets()
-            .then(data => res.json(data))
-            .catch(err => res.status(404).send(err));
+            .then(data => {
+                res.render("sets", { sets: data, page: "/lego/sets" }); 
+            })
+            .catch(err => {
+                res.status(404).render("404", { message: err, page: "" }); 
+            });
     }
 });
 
 app.get('/lego/sets/:setNum', (req, res) => {
     legoData.getSetByNum(req.params.setNum)
-        .then(data => res.json(data))
-        .catch(err => res.status(404).send(err));
-});
-
-// New route to test addSet functionality [cite: 33]
-app.get('/lego/add-test', (req, res) => {
-    let testSet = {
-        set_num: "A001", // Using a unique set_num to avoid conflicts with existing data in setData.json
-        name: "Test New Lego Set",
-        year: "2025",
-        theme_id: "1", // Assuming theme_id '1' exists in themeData.json (e.g., "Technic")
-        num_parts: "150",
-        img_url: "https://fakeimg.pl/375x375?text=[+New+Lego+Set+]"
-    };
-
-    legoData.addSet(testSet)
-        .then(() => {
-            console.log("Test set added successfully.");
-            res.redirect('/lego/sets'); // Redirect to /lego/sets on success [cite: 33]
+        .then(data => {
+            res.render("set", { set: data, page: "" }); 
         })
         .catch(err => {
-            console.error("Error adding test set:", err);
-            res.status(422).send(err); // Set status to 422 and return error on failure [cite: 33]
+            res.status(404).render("404", { message: err, page: "" }); 
         });
 });
 
 
-// Custom 404 route
+app.get("/lego/addSet", (req, res) => {
+  legoData.getAllThemes() // Fetch all themes
+    .then(themes => {
+      res.render("addSet", { themes: themes, page: "/lego/addSet" });
+    })
+    .catch(err => {
+      // Handle error if themes can't be fetched
+      res.status(500).render("404", { message: "Error fetching themes: " + err, page: "" });
+    });
+});
+
+
+app.post("/lego/addSet", (req, res) => {
+  
+  legoData.getThemeById(req.body.theme_id)
+    .then(foundTheme => {
+      
+      req.body.theme = foundTheme.name; 
+      return legoData.addSet(req.body);
+    })
+    .then(() => {
+      res.redirect("/lego/sets"); 
+    })
+    .catch(err => {
+     
+      res.status(500).send("Error adding set: " + err); 
+    });
+});
+
+//Deleting a Set
+app.get("/lego/deleteSet/:set_num", async (req, res) => {
+    try {
+        await legoData.deleteSetByNum(req.params.set_num);
+        res.redirect("/lego/sets");
+    } catch (err) {
+        res.status(404).render("404", { message: err, page: "" });
+    }
+});
+
+
 app.use((req, res) => {
-    res.status(404).sendFile(path.join(__dirname, "/views/404.html"));
+    res.status(404).render("404", { page: "" }); 
 });
 
 // Initialize legoData and start the server
