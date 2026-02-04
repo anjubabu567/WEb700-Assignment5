@@ -1,16 +1,4 @@
-/********************************************************************************
-* WEB700 – Assignment 05
-*
-* I declare that this assignment is my own work in accordance with Seneca's
-* Academic Integrity Policy:
-*
-* https://www.senecapolytechnic.ca/about/policies/academic-integrity-policy.html
-*
-* Name: Anju Babu Student ID: 115640245 Date: 17-07-2025
-*
-* Published URL: w-eb700-assignment5.vercel.app
-*
-********************************************************************************/
+
 const express = require('express');
 const app = express();
 const path = require('path');
